@@ -13,7 +13,7 @@ reg PB_sync_0;  always @(posedge clk) PB_sync_0 <= ~PB;  // invert PB to make PB
 reg PB_sync_1;  always @(posedge clk) PB_sync_1 <= PB_sync_0;
 
 // Next declare a 16-bits counter
-reg [15:0] PB_cnt;
+reg [20:0] PB_cnt;
 
 // When the push-button is pushed or released, we increment the counter
 // The counter has to be maxed out before we decide that the push-button state has changed
