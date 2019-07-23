@@ -19,5 +19,8 @@ prog : bin/toplevel.bin
 	stty -F /dev/ttyACM0 raw
 	cat bin/toplevel.bin >/dev/ttyACM0
 
+multi: bin/toplevel.bin
+	icemulti -v -o bin/multi.bin -a15 -p0 bin/toplevel.bin chip.bin
+
 clean :
 	rm -rf bin
