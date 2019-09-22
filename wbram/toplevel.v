@@ -89,8 +89,7 @@ module	toplevel(i_clk,
 
 	SB_GB global_buffer(clk_50mhz, s_clk);
 
-	// Bus wb
-	// Wishbone master wire definitions for bus: wb
+	// Wishbone master wire definitions
 	reg		wb_cyc, wb_stb, wb_we;
 	reg	[18:0]	wb_addr;
 	reg	[31:0]	wb_data;
@@ -126,15 +125,17 @@ module	toplevel(i_clk,
 
 	assign	i_ram_data = w_ram_data_nedge;
 
-	reg writing = 1;
-	reg [12:0] delay_counter = 0;
+	reg        writing = 1;
+	reg        err     = 0;
+	reg        valid   = 0;
+	reg [10:0] delay_counter = 0;
         reg [31:0] cycle_counter = 0;
 	reg [31:0] start_count;
 
 	// Write to ram and read back
 	always @(posedge s_clk) begin
 		cycle_counter <= cycle_counter + 1;
-		o_led <= ~{writing};
+		o_led <= ~{err, 1'b0, valid, writing};
 		if (wb_stb) begin // request in progress
 			if (!sdram_stall) begin
 				wb_stb <= 0;
@@ -143,9 +144,15 @@ module	toplevel(i_clk,
 	        end else if (wb_cyc) begin // waiting
 			if (sdram_ack) begin 
 				wb_cyc <= 0;
-				if (!writing) o_diag <= sdram_data[18:11];
-				//if (!writing) o_diag = cycle_counter - start_count;
+				if (!writing) begin
+					o_diag <= sdram_data[18:11];
+				        if (sdram_data != wb_addr) err = 1;
+				end
 		        	wb_addr <= wb_addr + 1;
+				if (&wb_addr) begin
+					writing <= 0;
+					if (!writing && !err) valid = 1;
+				end
 		        end
 		end else begin // idle
 			delay_counter <= delay_counter + 1;
@@ -157,7 +164,6 @@ module	toplevel(i_clk,
 				// Write the 19-bit address to each word
 		        	wb_data <= wb_addr;
 				// Switch to reading when all data written
-				if (&wb_addr) writing <= 0;
 				start_count <= cycle_counter;
 			end
 		end
