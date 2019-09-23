@@ -12,8 +12,8 @@ module ramtest (
   output            sd_cke,     // clock enable
   output            sd_clk,     // sdram clock
 
-  output [7:0]      diag,       // diagnostic leds
-  output [3:0]      led         // colored leds
+  output      [7:0] diag,       // diagnostic leds
+  output      [3:0] led         // colored leds
 );
 
   // 64Mhz clock from PLL
@@ -66,21 +66,26 @@ module ramtest (
   reg        reading = 0;
   reg        err = 0;
 
-  assign led = ~{2'b0, err,  ~reading};
+  assign led = ~{err,  2'b0, ~reading};
   assign diag = din[7:0];
 
   // 1 clock cycle of 8Mhz clock is a read or write
   // Write on even counts
   // Read on count 0
-  // Refresh on other cou#nts
+  // Refresh on other counts
   always @(posedge clk8) begin
+    if (count > 0 && reading && din != addr[19:12]) begin 
+      err <= 1;
+    end
     ds <= 2'b11;
     count <= count + 1;
     dout <= addr[19:12]; // Set 8-bits data to top of address
     we <= (count[0] == 0 && !reading);
     oe <= (count == 0 && reading);
-    if (count == 7) addr <= addr + 1;
-    if (&addr) reading <= 1; // Switch to read when all ram is written to
+    if (count == 7) begin
+      addr <= addr + 1;
+      if (&addr) reading <= 1; // Switch to read when all ram is written to
+    end
   end
 
   // Gameboy SDRAM interface
