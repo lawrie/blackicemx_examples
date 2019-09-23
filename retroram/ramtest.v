@@ -65,26 +65,30 @@ module ramtest (
   reg [15:0] din;
   reg        reading = 0;
   reg        err = 0;
+  reg        passed = 0;
 
-  assign led = ~{err,  2'b0, ~reading};
-  assign diag = din[7:0];
+  assign led = ~{err,  1'b0, passed, ~reading};
+  assign diag = din[15:8];
 
   // 1 clock cycle of 8Mhz clock is a read or write
   // Write on even counts
   // Read on count 0
   // Refresh on other counts
   always @(posedge clk8) begin
-    if (count > 0 && reading && din != addr[19:12]) begin 
+    if (count > 0 && reading && din != addr[19:4]) begin 
       err <= 1;
     end
     ds <= 2'b11;
     count <= count + 1;
-    dout <= addr[19:12]; // Set 8-bits data to top of address
+    dout <= addr[19:4]; // Set data to top of address
     we <= (count[0] == 0 && !reading);
     oe <= (count == 0 && reading);
     if (count == 7) begin
       addr <= addr + 1;
-      if (&addr) reading <= 1; // Switch to read when all ram is written to
+      if (&addr) begin 
+        reading <= 1; // Switch to read when all ram is written to
+	if (reading && !err) passed = 1;
+      end
     end
   end
 
