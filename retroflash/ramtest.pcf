@@ -1,0 +1,73 @@
+set_io clk_25M 60
+
+# SRAM
+set_io sd_addr[0] 117
+set_io sd_addr[1] 119
+set_io sd_addr[2] 121
+set_io sd_addr[3] 124
+set_io sd_addr[4] 130
+set_io sd_addr[5] 125
+set_io sd_addr[6] 122
+set_io sd_addr[7] 120
+set_io sd_addr[8] 118
+set_io sd_addr[9] 116
+set_io sd_addr[10] 115
+
+set_io sd_ba 114
+
+set_io sd_data[0] 78
+set_io sd_data[1] 79
+set_io sd_data[2] 80
+set_io sd_data[3] 81
+set_io sd_data[4] 82
+set_io sd_data[5] 83
+set_io sd_data[6] 84
+set_io sd_data[7] 85
+set_io sd_data[8] 87
+set_io sd_data[9] 88
+set_io sd_data[10] 90
+set_io sd_data[11] 91
+set_io sd_data[12] 95
+set_io sd_data[13] 96
+set_io sd_data[14] 97
+set_io sd_data[15] 98
+
+set_io sd_dqm[0] 93
+set_io sd_dqm[1] 94
+
+set_io sd_we 107
+set_io sd_cas 110
+set_io sd_ras 112
+set_io sd_cs 113
+set_io sd_cke 128
+
+set_io sd_clk 129
+
+set_io led[0] 52
+set_io led[1] 55
+set_io led[2] 56
+
+set_io diag[0] 34
+set_io diag[1] 33
+set_io diag[2] 29
+set_io diag[3] 28
+set_io diag[4] 38
+set_io diag[5] 37
+set_io diag[6] 32
+set_io diag[7] 31
+set_io diag[8] 16
+set_io diag[9] 15
+set_io diag[10] 10
+set_io diag[11] 9
+set_io diag[12] 18
+set_io diag[13] 17
+set_io diag[14] 12
+set_io diag[15] 11
+
+set_io flash_sck 70
+set_io flash_csn 71
+set_io flash_mosi 67
+set_io flash_miso 68
+
+set_io button 49
+
