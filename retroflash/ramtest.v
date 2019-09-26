@@ -145,7 +145,7 @@ module ramtest (
   // Flash memory load interface
   always @(posedge clk)
   begin
-    if (addr == 0) diag <= din;
+    diag <= din;
     if (reset) begin
       load_done <= 1'b0;
       load_addr <= 17'h1ffff; // Kludge
