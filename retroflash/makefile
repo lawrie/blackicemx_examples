@@ -8,7 +8,7 @@ bin/toplevel.asc : ramtest.pcf bin/toplevel.json
 	nextpnr-ice40 --freq 64 --hx8k --package tq144:4k --json bin/toplevel.json --pcf ramtest.pcf --asc bin/toplevel.asc --opt-timing --placer heap
 
 bin/toplevel.bin : bin/toplevel.asc
-	icepack -s bin/toplevel.asc bin/toplevel.bin
+	icepack bin/toplevel.asc bin/toplevel.bin
 
 compile : bin/toplevel.bin
 

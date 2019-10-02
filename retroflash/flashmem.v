@@ -16,7 +16,8 @@ module icosoc_flashmem (
 	reg [7:0] buffer;
 	reg [3:0] xfer_cnt;
 	reg [2:0] state;
-	reg       wake = 1;
+	reg       wake;
+	reg [15:0] delay;
 
 	always @(posedge clk) begin
 		ready <= 0;
@@ -37,10 +38,14 @@ module icosoc_flashmem (
 					buffer <= {buffer, spi_miso};
 					xfer_cnt <= xfer_cnt - 1;
 				end
+			end else if (delay > 0) begin
+				delay <= delay - 1;
+				spi_cs <= 1;
 			end else if (wake) begin
-				buffer <= 'hab; // wake
-				xfer_cnt <= 8;
-				wake <= 0;
+				 buffer <= 'hab; // wake
+				 xfer_cnt <= 8;
+				 delay <= 'hffff;
+				 wake <= 0;
 			end else
 			case (state)
 				0: begin

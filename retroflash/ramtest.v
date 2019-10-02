@@ -1,5 +1,7 @@
+// Read data from flash memory into SDRAM
+// and read it black slowly showing in on leds.
 module ramtest (
-  input clk_25M,
+  input             clk_25M,    // 25 MHz clock
 
   // SDRAM
   inout      [15:0] sd_data,    // 16 bit bidirectional data bus
@@ -13,36 +15,21 @@ module ramtest (
   output            sd_cke,     // clock enable
   output            sd_clk,     // sdram clock
 
-  // flashmem
-  output flash_sck,
-  output flash_csn,
-  output flash_mosi,
-  input flash_miso,
+  // Flash memory
+  output            flash_sck,
+  output            flash_csn,
+  output            flash_mosi,
+  input             flash_miso,
 
-  input button,
+  input             button,
 
   // Diagnostics
-  output reg  [15:0] diag,       // diagnostic leds
+  output reg [15:0] diag,       // diagnostic leds
   output      [2:0] led         // colored leds
 );
 
-  wire sel_btn;
-
-  SB_IO #(
-    .PIN_TYPE(6'b0000_01),
-    .PULLUP(1'b1)
-  ) btn  (
-   .PACKAGE_PIN(button),
-   .D_IN_0(sel_btn)
-  );
-
-  reg btn_dly;
-  reg reload;
-
-  always @ (posedge clk) begin
-    btn_dly <= sel_btn;
-    reload = (sel_btn == 1'b0 && btn_dly == 1'b1);
-  end
+  parameter FLASH_ADDRESS = 'h70000;
+  parameter FLASH_SIZE = 16384;
 
   // 64Mhz clock from PLL
   reg clk;
@@ -54,20 +41,35 @@ module ramtest (
     .locked(locked)
   );
 
-  // Set SDRAM clock to 64Mhz and clock enable true
-  assign sd_clk = clk;
-  assign sd_cke = 1;
-
-  // 4Mhz clock for Gameboy CPU and 8Mhz clock for pixel clock
-  reg       clk4;
+  // 8Mhz clock
   reg       clk8;
   reg [3:0] div = 0;
 
   always @(posedge clk) begin
     div <= div + 1'd1;
-    clk8   <= !div[2:0];
-    clk4   <= !div[3:0];
+    clk8   <= (div[2:0] == 0);
   end
+
+  // Reset generation
+  reg [8:0] reset_count;
+  reg btn_dly;
+  reg reload;
+  reg [23:0] reloaded; // Used for reload led
+
+  // Reload when button is released
+  always @ (posedge clk8) begin
+    if (!(&reset_count)) reset_count <= reset_count + 1;
+    btn_dly <= button;
+    reload = (button == 1'b1 && btn_dly == 1'b0);
+    if (reload) reloaded <= 24'hffffff;
+    if (reloaded > 0) reloaded <= reloaded -1;
+  end
+
+  wire reset = !(&reset_count) || reload;
+
+  // Set SDRAM clock to 64Mhz and clock enable true
+  assign sd_clk = clk;
+  assign sd_cke = 1;
 
   // Use SB_IO for tristate sd_data
   wire [15:0] sd_data_in;
@@ -85,30 +87,29 @@ module ramtest (
   );
 
   // RAM test 
-  reg  [24:0] count;
-  reg        we, oe;
-  reg  [1:0] ds;
+  reg [24:0] count; // Adjust width for speed of reading
+  reg        oe;
   reg [19:0] addr;
-  reg [15:0] dout;
   reg [15:0] din;
-  reg        reading = 0;
-  reg        err = 0;
-  reg        passed = 0;
 
-  assign led = ~{reset, flashmem_valid, load_done};
-  //assign diag = din;
+  assign led = ~{reloaded > 0, flashmem_valid, load_done};
 
   // 1 clock cycle of 8Mhz clock is a read or write
   // Write on even counts
   // Read on count 0
   // Refresh on other counts
   always @(posedge clk8) begin
-    count <= count + 1;
-    oe <= (count == 0 && load_done);
-    if (count == 7 && load_done) addr <= addr + 1;
+    if (reset) begin
+      addr <= 0;
+      count <= 0;
+    end else begin
+      count <= count + 1;
+      oe <= (count == 0 && load_done);
+      if (count == 7 && load_done) addr <= addr + 1;
+    end
   end
 
-  // Gameboy SDRAM interface
+  // Retro 8Mhz SDRAM interface
   sdram ram(
     .sd_data_in(sd_data_in),
     .sd_data_out(sd_data_out),
@@ -124,65 +125,66 @@ module ramtest (
     .init(!locked),
     .sync(clk8),
     .ds(2'b11),
-    .we(!load_done && sdram_written > 0),
+    .we(!load_done && sdram_write_stage > 0),
     .oe(oe),
     .addr(load_done ? addr : load_addr),
     .din(load_write_data),
     .dout(din)
   );
 
-  reg flashmem_valid;
-  wire flashmem_ready;
-  wire [23:0] flashmem_addr = 24'h40000 | {load_addr, 1'b0};
-  wire [15:0] load_write_data;
-  reg [16:0] load_addr;
+  // SDRAM wrire stage during load fom flash:
+  // 0 = not writing, 1 = waiting for first sync
+  // 2 = writing and waiting for second sync
+  reg   [1:0] sdram_write_stage;
+  
+  reg         flashmem_valid;
+  reg  [16:0] load_addr;
+  reg         load_done;
 
-  reg [1:0] sdram_written = 0;
-  reg load_done = 0;
-  wire reset = (!locked) || reload;
-  reg [15:0] sdram_data;
+  wire        flashmem_ready;
+  wire [23:0] flashmem_addr = FLASH_ADDRESS | {load_addr, 1'b0};
+  wire [15:0] load_write_data;
 
   // Flash memory load interface
-  always @(posedge clk)
-  begin
+  always @(posedge clk) begin
     diag <= din;
     if (reset) begin
       load_done <= 1'b0;
-      load_addr <= 17'h1ffff; // Kludge
+      load_addr <= 0;
       flashmem_valid = 1'b1;
+      sdram_write_stage <= 1'b0;
     end else if (!load_done) begin
-      if (sdram_written > 0 && sdram_written < 3) begin
-        if (clk8) sdram_written <= sdram_written + 1;
-        if (sdram_written == 2 && clk8) begin
-          if (load_addr == 17'h10000) begin
+      if (sdram_write_stage > 0) begin
+        if (clk8) sdram_write_stage <= sdram_write_stage + 1;
+        if (sdram_write_stage == 2 && clk8) begin
+	  sdram_write_stage <= 0;
+          if (load_addr == (FLASH_SIZE -1)) begin
             load_done <= 1'b1;
           end else begin
             load_addr <= load_addr + 1'b1;
 	    flashmem_valid <= 1;
-	    sdram_written <= 0;
           end
         end
       end
       if (flashmem_ready) begin
-        sdram_written <= 1;
-	if (load_addr == 0) sdram_data <= load_write_data;
+        sdram_write_stage <= 1;
 	flashmem_valid <= 0;
       end
     end
   end
 
   icosoc_flashmem flash_i (
-  .clk(clk),
-  .reset(reset),
-  .valid(flashmem_valid && !load_done),
-  .ready(flashmem_ready),
-  .addr(flashmem_addr),
-  .rdata(load_write_data),
+    .clk(clk),
+    .reset(reset),
+    .valid(flashmem_valid && !load_done),
+    .ready(flashmem_ready),
+    .addr(flashmem_addr),
+    .rdata(load_write_data),
 
-  .spi_cs(flash_csn),
-  .spi_sclk(flash_sck),
-  .spi_mosi(flash_mosi),
-  .spi_miso(flash_miso)
+    .spi_cs(flash_csn),
+    .spi_sclk(flash_sck),
+    .spi_mosi(flash_mosi),
+    .spi_miso(flash_miso)
  );
 
 endmodule
