@@ -1,0 +1,6 @@
+bin
+*.bin
+*.blif
+*.json
+chip.txt
+
