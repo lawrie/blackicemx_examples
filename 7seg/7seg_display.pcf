@@ -17,3 +17,9 @@ set_io seg[7] 2  # dp
 set_io ca[0] 135  # ca0
 set_io ca[1] 139 # ca1
 set_io ca[2] 138  # ca2
+
+set_io d[0] 142
+set_io d[1] 141
+set_io d[2] 136
+set_io d[3] 137
+

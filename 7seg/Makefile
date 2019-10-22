@@ -19,7 +19,7 @@ chip.bin: chip.v hex27seg.v 7seg_display.v 7seg_display.pcf
 	icepack chip.txt chip.bin
 
 .PHONY: upload
-upload:
+upload: chip.bin
 	stty -F /dev/ttyACM0 raw
 	cat chip.bin >/dev/ttyACM0
 
