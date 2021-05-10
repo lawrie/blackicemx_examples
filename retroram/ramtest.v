@@ -1,5 +1,5 @@
 module ramtest (
-  input clk_25M,
+  input             clk_25M,
 
   inout      [15:0] sd_data,    // 16 bit bidirectional data bus
   output     [10:0] sd_addr,    // 11 bit multiplexed address bus
@@ -17,8 +17,8 @@ module ramtest (
 );
 
   // 64Mhz clock from PLL
-  reg clk;
-  reg locked;
+  reg  clk;
+  wire locked;
 
   pll pll_i (
     .clock_in(clk_25M),
@@ -33,18 +33,18 @@ module ramtest (
   // 4Mhz clock for Gameboy CPU and 8Mhz clock for pixel clock
   reg       clk4;
   reg       clk8;
-  reg [3:0] div = 0;
+  reg [2:0] div = 0;
 
   always @(posedge clk) begin
-    div <= div + 1'd1;
-    clk8   <= !div[2:0];
-    clk4   <= !div[3:0];
+    div  <= div + 1'd1;
+    clk8 <= div[2];
+    clk4 <= div[1];
   end
 
   // Use SB_IO for tristate sd_data
-  wire [15:0] sd_data_in;
-  reg  [15:0] sd_data_out;
-  reg         sd_data_dir;
+  wire [15:0]  sd_data_in;
+  wire [15:0]  sd_data_out;
+  wire         sd_data_dir;
 
   SB_IO #(
     .PIN_TYPE(6'b 1010_01),
@@ -57,17 +57,17 @@ module ramtest (
   );
 
   // RAM test 
-  reg  [2:0] count;
-  reg        we, oe;
-  reg  [1:0] ds;
-  reg [19:0] addr;
-  reg [15:0] dout;
-  reg [15:0] din;
-  reg        reading = 0;
-  reg        err = 0;
-  reg        passed = 0;
+  reg  [2:0]  count;
+  reg         we, oe;
+  reg  [1:0]  ds;
+  reg [19:0]  addr;
+  reg [15:0]  dout;
+  reg         reading = 0;
+  reg         err     = 0;
+  reg         passed  = 0;
+  wire [15:0] din;
 
-  assign led = ~{err,  1'b0, passed, ~reading};
+  assign led  = ~{err,  1'b0, passed, ~reading};
   assign diag = din[15:8];
 
   // 1 clock cycle of 8Mhz clock is a read or write
